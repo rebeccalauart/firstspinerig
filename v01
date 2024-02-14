@@ -1,0 +1,104 @@
+#Rebecca Lau Joe Yee
+
+from maya import cmds
+
+
+#cmds.spaceLocator()
+selection = cmds.ls(selection=True) 
+
+#selection of locators keeping in mind of x,y,z axis
+locator_positions = list()                                
+for item in selection:                                    
+    item_position = cmds.xform(item,q=True,matrix=True)   
+    locator_positions.append(item_position)               
+print(locator_positions)    
+
+#no. of joints that will be created will depend on the number of locators
+#joints will be placed. 
+
+#make bind joint
+
+firstBind_joint = None
+lastBind_joint = None 
+for x in range(len(locator_positions)):
+    newBind_joint=cmds.createNode('joint', name = 'spinebindJNT')
+    cmds.xform(newBind_joint,matrix=locator_positions[x])
+    
+   
+    print('joint={} x={} len={}'.format(newBind_joint,x,len(selection)))
+    
+    if not x+1==len(selection): 
+        cmds.delete(cmds.aimConstraint(selection[x+1], newBind_joint, maintainOffset=False, aimVector=(1,0,0), worldUpType='scene'))
+    
+    if x == 0:
+        firstBind_joint=newBind_joint
+        lastBind_joint=newBind_joint
+        continue
+    print(x)
+    print(newBind_joint)
+    print(lastBind_joint)
+    cmds.parent (newBind_joint, lastBind_joint)
+    lastBind_joint=newBind_joint
+
+
+#make spine ik joint
+first_joint = None
+last_joint = None 
+pelvis = None
+for x in range(len(locator_positions)):
+    new_joint=cmds.createNode('joint', name = 'spineIKJNT')
+    cmds.xform(new_joint,matrix=locator_positions[x])
+    
+    print('joint={} x={} len={}'.format(new_joint,x,len(selection)))
+    
+    if not x+1==len(selection): 
+        cmds.delete(cmds.aimConstraint(selection[x+1], new_joint, maintainOffset=False, aimVector=(1,0,0), worldUpType='scene'))
+    
+    if x == 0:
+        first_joint=new_joint
+        #duplicate new joint 
+        pelvis = cmds.duplicate(first_joint)
+        #rename duplicated joint
+        pelvis = cmds.rename(pelvis,'pelvisJNT')
+        
+        last_joint=new_joint
+        continue
+    print(x)
+    print(new_joint)
+    print(last_joint)
+    cmds.parent (new_joint, last_joint)
+    last_joint=new_joint
+
+#duplicate last joint
+chest = cmds.duplicate(last_joint)
+#rename duplicated joint
+chest = cmds.rename(chest,'chestJNT')
+#parent duplicated joint to last joint
+cmds.parent(first_joint,chest, world=True)
+
+cmds.ikHandle(startJoint=first_joint, endEffector=last_joint, priority=2, weight=.5, solver='ikSplineSolver' )
+
+cmds.select(clear = True)
+
+cmds.skinCluster('chestJNT','pelvisJNT','curve1')
+
+spinebindJNT = 'spinebindJNT'
+spinebindJNT1 = 'spinebindJNT1'
+spinebindJNT2 = 'spinebindJNT2'
+spinebindJNT3 = 'spinebindJNT3'
+spinebindJNT4 = 'spinebindJNT4'
+
+cmds.ikHandle(startJoint=spinebindJNT, endEffector=spinebindJNT1, priority=2, weight=.5, solver='ikRPsolver', name = 'C_spine_0_bind_IK_HDL')   
+cmds.ikHandle(startJoint=spinebindJNT1, endEffector=spinebindJNT2, priority=2, weight=.5, solver='ikRPsolver', name = 'C_spine_1_bind_IK_HDL')   
+cmds.ikHandle(startJoint=spinebindJNT2, endEffector=spinebindJNT3, priority=2, weight=.5, solver='ikRPsolver', name = 'C_spine_2_bind_IK_HDL')   
+cmds.ikHandle(startJoint=spinebindJNT3, endEffector=spinebindJNT4, priority=2, weight=.5, solver='ikRPsolver', name = 'C_spine_3_bind_IK_HDL')      
+
+C_spine_0_bind_IK_HDL = 'C_spine_0_bind_IK_HDL'
+C_spine_1_bind_IK_HDL = 'C_spine_1_bind_IK_HDL'
+C_spine_2_bind_IK_HDL = 'C_spine_2_bind_IK_HDL'
+C_spine_3_bind_IK_HDL = 'C_spine_3_bind_IK_HDL'
+
+
+cmds.group(C_spine_0_bind_IK_HDL, C_spine_1_bind_IK_HDL, C_spine_2_bind_IK_HDL, C_spine_3_bind_IK_HDL, name = 'IK_GRP' ) 
+  
+cmds.select(clear = True)
